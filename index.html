@@ -376,7 +376,7 @@
 
     <div class="mode-toggle">
       <button id="tbModeFDC" class="active">Viên phối hợp (FDC) · Lao hàng 1</button>
-      <button id="tbModeSingle">Từng thuốc (mg/kg / liều cố định)</button>
+      <button id="tbModeSingle">Từng thuốc — Hàng 1 &amp; Hàng 2 (mg/kg / liều cố định)</button>
     </div>
 
     <!-- ---- FDC weight-band lookup ---- -->
@@ -385,29 +385,42 @@
         <div class="panel">
           <p class="eyebrow">Viên phối hợp liều cố định (FDC) — theo băng cân nặng WHO</p>
           <p class="hint" style="margin-bottom:14px;">
-            Giai đoạn tấn công: viên <strong>RHZE</strong> (Rifampicin 150mg + Isoniazid 75mg +
-            Pyrazinamide 400mg + Ethambutol 275mg).<br>
-            Giai đoạn duy trì: viên <strong>RH</strong> (Rifampicin 150mg + Isoniazid 75mg).<br>
+            <strong>RHZE</strong> = Rifampicin 150mg + Isoniazid 75mg + Pyrazinamide 400mg + Ethambutol 275mg (tấn công).<br>
+            <strong>RHZ</strong> = Rifampicin 150mg + Isoniazid 75mg + Pyrazinamide 400mg, <em>không có Ethambutol</em> — dùng khi
+            cần bỏ Ethambutol khỏi phác đồ (vd. chống chỉ định thị giác), giả định hàm lượng R/H/Z giống viên RHZE.<br>
+            <strong>RH</strong> = Rifampicin 150mg + Isoniazid 75mg (duy trì).<br>
             Bảng theo băng cân nặng chuẩn WHO / Global Drug Facility — đối chiếu với phác đồ hiện hành
             của Chương trình Chống Lao Quốc gia trước khi áp dụng.
           </p>
           <table class="bandtable" id="tbFdcTable">
-            <thead><tr><th>Cân nặng</th><th>RHZE (tấn công)</th><th>RH (duy trì)</th></tr></thead>
+            <thead><tr><th>Cân nặng</th><th>RHZE</th><th>RHZ</th><th>RH (duy trì)</th></tr></thead>
             <tbody></tbody>
           </table>
-          <p class="hint" style="margin-top:10px;">Dưới 25kg: dùng phác đồ nhi khoa / thuốc rời theo mg/kg, không áp dụng bảng người lớn này.</p>
+          <p class="hint" style="margin-top:10px;">Dưới 30kg: dùng phác đồ nhi khoa / thuốc rời theo mg/kg, không áp dụng bảng người lớn này.</p>
         </div>
         <div class="panel">
           <p class="eyebrow">Kết quả theo cân nặng đã nhập</p>
           <div class="headline-dose">
-            <div class="tag">Giai đoạn tấn công — RHZE</div>
+            <div class="tag">Tấn công — RHZE (150/75/400/275mg)</div>
             <div class="big"><span id="tbFdcRhze">–</span> <span class="u">viên/ngày</span></div>
           </div>
           <div class="headline-dose">
-            <div class="tag">Giai đoạn duy trì — RH</div>
+            <div class="tag">Tấn công thay thế — RHZ, không Ethambutol (150/75/400mg)</div>
+            <div class="big"><span id="tbFdcRhz">–</span> <span class="u">viên/ngày</span></div>
+          </div>
+          <div class="headline-dose">
+            <div class="tag">Duy trì — RH (150/75mg)</div>
             <div class="big"><span id="tbFdcRh">–</span> <span class="u">viên/ngày</span></div>
           </div>
           <p class="ref" id="tbFdcNote">Nhập cân nặng bệnh nhân ở trên để xem kết quả.</p>
+
+          <p class="eyebrow" style="margin-top:20px;">Viên rời bổ sung (tính theo mg/kg thực tế, không theo bảng)</p>
+          <table class="conv" id="tbFdcLooseTable"></table>
+          <p class="hint" style="margin-top:8px;">
+            Dùng khi cần thêm/bớt riêng Ethambutol hoặc Pyrazinamide — ví dụ phác đồ dùng RHZ + E rời,
+            hoặc khi tái sử dụng thuốc lần lượt sau viêm gan do thuốc lao. Hàm lượng viên có thể chỉnh ở tab
+            "Từng thuốc" bên cạnh.
+          </p>
         </div>
       </div>
     </div>
@@ -417,6 +430,11 @@
       <div class="grid">
         <div class="panel">
           <p class="eyebrow">Thuốc &amp; liều chuẩn</p>
+          <p class="hint" style="margin-top:-8px; margin-bottom:14px;">
+            Danh mục gồm cả thuốc lao <strong>hàng 1</strong> (dùng rời, ngoài phác đồ FDC) và
+            <strong>hàng 2</strong> dùng trong lao kháng thuốc (nhóm A/B/C theo WHO). Chọn thuốc bên dưới,
+            nhóm hiển thị trong danh sách.
+          </p>
 
           <div class="field">
             <label for="tbDrugSelect">Thuốc lao</label>
@@ -447,6 +465,7 @@
               <input type="number" id="tbStrength" min="0" step="any">
               <span class="unit-suffix">mg/viên</span>
             </div>
+            <p class="hint">Nhiều thuốc có sẵn nhiều hàm lượng khác nhau (vd. Rifampicin 150mg hoặc 300mg) — chỉnh lại đúng loại viên đang dùng, kết quả bên phải sẽ ghi rõ hàm lượng đã tính.</p>
           </div>
 
           <div class="field" id="tbVialFields" style="display:none;">
@@ -715,7 +734,9 @@ function fmt(n, maxDp=4){
   const abs = Math.abs(n);
   let dp = maxDp;
   if(abs>=100) dp=1; else if(abs>=10) dp=2; else if(abs>=1) dp=3;
-  return n.toFixed(dp).replace(/\.?0+$/,'').replace(/^$/,'0');
+  let s = n.toFixed(dp);
+  if(s.includes('.')) s = s.replace(/0+$/,'').replace(/\.$/,'');
+  return s || '0';
 }
 
 function compute(){
@@ -789,11 +810,18 @@ setMode('forward');
    ========================================================================= */
 
 const TB_FDC_BANDS = [
-  { label:'25 – 37 kg', min:25, max:37.999, tabs:2 },
+  { label:'30 – 37 kg', min:30, max:37.999, tabs:2 },
   { label:'38 – 54 kg', min:38, max:54.999, tabs:3 },
   { label:'55 – 70 kg', min:55, max:70.999, tabs:4 },
   { label:'> 70 kg',    min:71, max:99999,  tabs:5 },
 ];
+// Standard mg/kg used only for the "viên rời" (loose tablet) reference figures
+// shown alongside the FDC table — computed from the patient's actual weight,
+// not from the band table.
+const TB_LOOSE_REF = {
+  emb: { name:'Ethambutol (E) rời', mgKg:15, strengthMg:400 },
+  pza: { name:'Pyrazinamide (Z) rời', mgKg:25, strengthMg:500 },
+};
 
 // form: 'tablet' | 'injection'
 // doseMode: 'perKg' | 'fixed'
@@ -855,8 +883,10 @@ const tbPanelFDC = document.getElementById('tbPanelFDC');
 const tbPanelSingle = document.getElementById('tbPanelSingle');
 const tbFdcTableBody = document.querySelector('#tbFdcTable tbody');
 const tbFdcRhze = document.getElementById('tbFdcRhze');
+const tbFdcRhz = document.getElementById('tbFdcRhz');
 const tbFdcRh = document.getElementById('tbFdcRh');
 const tbFdcNote = document.getElementById('tbFdcNote');
+const tbFdcLooseTable = document.getElementById('tbFdcLooseTable');
 
 const tbDrugSelect = document.getElementById('tbDrugSelect');
 const tbPerKgField = document.getElementById('tbPerKgField');
@@ -884,7 +914,7 @@ let tbMode = 'fdc';
 TB_FDC_BANDS.forEach(b=>{
   const tr = document.createElement('tr');
   tr.dataset.min = b.min; tr.dataset.max = b.max;
-  tr.innerHTML = `<td class="band">${b.label}</td><td>${b.tabs} viên/ngày</td><td>${b.tabs} viên/ngày</td>`;
+  tr.innerHTML = `<td class="band">${b.label}</td><td>${b.tabs} viên/ngày</td><td>${b.tabs} viên/ngày</td><td>${b.tabs} viên/ngày</td>`;
   tbFdcTableBody.appendChild(tr);
 });
 
@@ -935,7 +965,11 @@ function tbFmt(n, dp=2){
   const abs = Math.abs(n);
   let d = dp;
   if(abs>=100) d=0; else if(abs>=10) d=1;
-  return n.toFixed(d).replace(/\.?0+$/,'').replace(/^$/,'0');
+  let s = n.toFixed(d);
+  // only strip trailing zeros that come after a decimal point — never
+  // touch zeros that are part of the integer value (e.g. "600" must stay "600")
+  if(s.includes('.')) s = s.replace(/0+$/,'').replace(/\.$/,'');
+  return s;
 }
 
 function tbComputeFDC(){
@@ -949,15 +983,30 @@ function tbComputeFDC(){
   });
   if(band){
     tbFdcRhze.textContent = band.tabs;
+    tbFdcRhz.textContent = band.tabs;
     tbFdcRh.textContent = band.tabs;
-    tbFdcNote.textContent = `Cân nặng ${w}kg thuộc băng ${band.label} → ${band.tabs} viên RHZE/ngày (tấn công) và ${band.tabs} viên RH/ngày (duy trì).`;
+    tbFdcNote.textContent = `Cân nặng ${w}kg thuộc băng ${band.label} → ${band.tabs} viên/ngày cho cả RHZE, RHZ (nếu dùng thay RHZE) và RH (duy trì).`;
   } else {
     tbFdcRhze.textContent = '–';
+    tbFdcRhz.textContent = '–';
     tbFdcRh.textContent = '–';
-    tbFdcNote.textContent = w>0 && w<25
-      ? 'Cân nặng dưới 25kg — không dùng bảng FDC người lớn này, cần tính theo phác đồ nhi khoa / thuốc rời theo mg/kg.'
+    tbFdcNote.textContent = w>0 && w<30
+      ? 'Cân nặng dưới 30kg — không dùng bảng FDC người lớn này, cần tính theo phác đồ nhi khoa / thuốc rời theo mg/kg.'
       : 'Nhập cân nặng bệnh nhân ở trên để xem kết quả.';
   }
+
+  // loose E / Z tablets — computed from actual weight × standard mg/kg,
+  // independent of the fixed weight-band table above
+  tbFdcLooseTable.innerHTML = '';
+  Object.values(TB_LOOSE_REF).forEach(ref=>{
+    const totalMg = w>0 ? ref.mgKg*w : NaN;
+    const tabs = isFinite(totalMg) ? tbRoundHalf(totalMg/ref.strengthMg) : NaN;
+    const tr = document.createElement('tr');
+    const label = `${ref.name} (viên ${ref.strengthMg}mg, ${ref.mgKg}mg/kg)`;
+    const val = isFinite(tabs) ? `${tbFmt(tabs,1)} viên/ngày (${tbFmt(totalMg,0)} mg)` : '–';
+    tr.innerHTML = `<td class="k">${label}</td><td class="v">${val}</td>`;
+    tbFdcLooseTable.appendChild(tr);
+  });
 }
 
 function tbComputeSingle(){
@@ -1009,9 +1058,10 @@ function tbComputeSingle(){
     const strength = parseFloat(tbStrength.value) || 0;
     const exact = (isFinite(totalMg) && strength>0) ? totalMg/strength : NaN;
     const rounded = isFinite(exact) ? tbRoundHalf(exact) : NaN;
+    const strLabel = strength>0 ? ` — viên hàm lượng ${tbFmt(strength,0)}mg` : '';
     [
-      ['Số viên chính xác', isFinite(exact) ? tbFmt(exact,2)+' viên/ngày' : '–'],
-      ['Số viên làm tròn (0,5 viên)', isFinite(rounded) ? tbFmt(rounded,1)+' viên/ngày' : '–'],
+      [`Số viên chính xác${strLabel}`, isFinite(exact) ? tbFmt(exact,2)+' viên/ngày' : '–'],
+      [`Số viên làm tròn (0,5 viên)${strLabel}`, isFinite(rounded) ? tbFmt(rounded,1)+' viên/ngày' : '–'],
     ].forEach(([k,v])=>{
       const tr = document.createElement('tr');
       tr.innerHTML = `<td class="k">${k}</td><td class="v">${v}</td>`;
