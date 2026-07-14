@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Máy tính liều thuốc vận mạch · ICU</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bezel:#0D1417;
+    --panel:#16211F;
+    --panel-raised:#1C2926;
+    --line:#283634;
+    --teal:#4FD8B8;
+    --teal-dim:#2E7A68;
+    --amber:#E8A94C;
+    --text:#EAF2EF;
+    --muted:#7E938F;
+    --alert:#E2685C;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bezel);
+    color:var(--text);
+    font-family:'IBM Plex Sans',sans-serif;
+    min-height:100vh;
+    padding:24px 16px 64px;
+  }
+  .wrap{max-width:1040px;margin:0 auto;}
+
+  header.app-header{
+    display:flex; align-items:baseline; justify-content:space-between;
+    flex-wrap:wrap; gap:8px;
+    margin-bottom:18px;
+    border-bottom:1px solid var(--line);
+    padding-bottom:14px;
+  }
+  header.app-header h1{
+    font-size:1.15rem; font-weight:600; margin:0;
+    letter-spacing:.02em;
+  }
+  header.app-header .sub{
+    font-size:.78rem; color:var(--muted); margin:0;
+  }
+
+  /* ---------- pump LCD strip (signature element) ---------- */
+  .pump-strip{
+    background:#0A1210;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:16px 18px;
+    margin-bottom:22px;
+    position:relative;
+    overflow:hidden;
+  }
+  .pump-strip::before{
+    content:"";
+    position:absolute; inset:0;
+    background:repeating-linear-gradient(0deg, rgba(79,216,184,0.025) 0px, rgba(79,216,184,0.025) 1px, transparent 1px, transparent 3px);
+    pointer-events:none;
+  }
+  .pump-strip .row1{
+    display:flex; justify-content:space-between; align-items:center;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.72rem; letter-spacing:.08em; color:var(--muted);
+    text-transform:uppercase; margin-bottom:10px;
+  }
+  .pump-strip .row1 .drugname{color:var(--teal); font-weight:600;}
+  .pump-strip .readouts{
+    display:flex; gap:28px; flex-wrap:wrap;
+  }
+  .readout{min-width:130px;}
+  .readout .label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.68rem; color:var(--amber); letter-spacing:.1em; text-transform:uppercase;
+  }
+  .readout .value{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:1.9rem; font-weight:600; color:var(--teal);
+    text-shadow:0 0 14px rgba(79,216,184,0.35);
+    line-height:1.3;
+  }
+  .readout .unit{font-size:1rem; color:var(--muted); font-weight:400; margin-left:4px;}
+
+  /* ---------- mode toggle ---------- */
+  .mode-toggle{
+    display:flex; gap:0; margin-bottom:20px;
+    border:1px solid var(--line); border-radius:8px; overflow:hidden; width:fit-content;
+  }
+  .mode-toggle button{
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:.82rem; padding:9px 16px; background:var(--panel);
+    color:var(--muted); border:none; cursor:pointer; transition:background .15s,color .15s;
+  }
+  .mode-toggle button.active{background:var(--teal-dim); color:#eafff8; font-weight:600;}
+  .mode-toggle button:not(.active):hover{background:var(--panel-raised); color:var(--text);}
+
+  /* ---------- layout ---------- */
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
+  }
+  @media (max-width:760px){ .grid{grid-template-columns:1fr;} }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:18px 20px 22px;
+  }
+  .panel .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.68rem; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--muted); margin:0 0 14px;
+  }
+
+  .field{margin-bottom:14px;}
+  .field label{
+    display:block; font-size:.8rem; color:var(--muted); margin-bottom:5px;
+  }
+  .field .row{display:flex; gap:8px;}
+  select, input[type=number]{
+    width:100%;
+    background:var(--panel-raised);
+    border:1px solid var(--line);
+    color:var(--text);
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:.92rem;
+    padding:9px 10px;
+    border-radius:6px;
+    outline:none;
+  }
+  select:focus, input[type=number]:focus{
+    border-color:var(--teal);
+    box-shadow:0 0 0 2px rgba(79,216,184,0.18);
+  }
+  input[type=number]{-moz-appearance:textfield;}
+  .unit-suffix{
+    display:flex; align-items:center; padding:0 10px;
+    background:var(--panel-raised); border:1px solid var(--line); border-radius:6px;
+    color:var(--muted); font-size:.82rem; white-space:nowrap;
+  }
+
+  .hint{font-size:.72rem; color:var(--muted); margin-top:4px; line-height:1.4;}
+  .warn{font-size:.78rem; color:var(--alert); margin-top:6px; display:none;}
+  .warn.show{display:block;}
+
+  /* ---------- results ---------- */
+  .headline-dose{
+    background:var(--panel-raised);
+    border:1px solid var(--teal-dim);
+    border-radius:8px;
+    padding:16px 18px;
+    margin-bottom:16px;
+  }
+  .headline-dose .tag{
+    font-family:'IBM Plex Mono',monospace; font-size:.68rem; letter-spacing:.1em;
+    color:var(--amber); text-transform:uppercase; margin-bottom:6px;
+  }
+  .headline-dose .big{
+    font-family:'IBM Plex Mono',monospace; font-size:2.3rem; font-weight:700; color:var(--teal);
+    line-height:1.15;
+  }
+  .headline-dose .big .u{font-size:1.1rem; color:var(--muted); font-weight:400; margin-left:6px;}
+  .headline-dose .ref{font-size:.76rem; color:var(--muted); margin-top:8px; line-height:1.45;}
+
+  table.conv{width:100%; border-collapse:collapse; font-size:.85rem;}
+  table.conv td{padding:7px 4px; border-bottom:1px solid var(--line);}
+  table.conv td.k{color:var(--muted);}
+  table.conv td.v{text-align:right; font-family:'IBM Plex Mono',monospace; color:var(--text);}
+  table.conv tr:last-child td{border-bottom:none;}
+  table.conv tr.highlight td{color:var(--teal); font-weight:600;}
+
+  .reverse-result{
+    background:var(--panel-raised);
+    border:1px solid var(--teal-dim);
+    border-radius:8px;
+    padding:16px 18px;
+    text-align:center;
+  }
+  .reverse-result .tag{
+    font-family:'IBM Plex Mono',monospace; font-size:.68rem; letter-spacing:.1em;
+    color:var(--amber); text-transform:uppercase; margin-bottom:8px;
+  }
+  .reverse-result .big{
+    font-family:'IBM Plex Mono',monospace; font-size:2.6rem; font-weight:700; color:var(--teal);
+  }
+  .reverse-result .u{font-size:1.1rem; color:var(--muted); margin-left:6px;}
+
+  footer{
+    margin-top:28px; font-size:.72rem; color:var(--muted); line-height:1.6;
+    border-top:1px solid var(--line); padding-top:14px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="app-header">
+    <h1>Máy tính liều thuốc truyền tĩnh mạch</h1>
+    <p class="sub">Bơm tiêm điện (ml/h) ⇄ liều chuẩn theo cân nặng · dùng nội bộ khoa ICU</p>
+  </header>
+
+  <div class="pump-strip">
+    <div class="row1">
+      <span>BƠM TIÊM ĐIỆN · <span class="drugname" id="stripDrug">—</span></span>
+      <span id="stripTime"></span>
+    </div>
+    <div class="readouts">
+      <div class="readout">
+        <div class="label">Nồng độ</div>
+        <div class="value" id="stripConc">–<span class="unit" id="stripConcUnit"></span></div>
+      </div>
+      <div class="readout">
+        <div class="label">Tốc độ bơm</div>
+        <div class="value" id="stripRate">–<span class="unit">ml/h</span></div>
+      </div>
+      <div class="readout">
+        <div class="label">Liều chuẩn</div>
+        <div class="value" id="stripDose">–<span class="unit" id="stripDoseUnit"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mode-toggle">
+    <button id="modeForward" class="active">Tính liều từ tốc độ bơm</button>
+    <button id="modeReverse">Tính tốc độ từ liều mong muốn</button>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT: settings -->
+    <div class="panel">
+      <p class="eyebrow">Cài đặt bơm &amp; pha thuốc</p>
+
+      <div class="field">
+        <label for="drugSelect">Thuốc</label>
+        <select id="drugSelect"></select>
+      </div>
+
+      <div class="field" id="customUnitField" style="display:none;">
+        <label for="customUnit">Đơn vị hàm lượng (thuốc tùy chỉnh)</label>
+        <select id="customUnit">
+          <option value="mg">mg (miligam)</option>
+          <option value="UI">UI (đơn vị quốc tế)</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="ampAmount">Hàm lượng mỗi ống / lọ</label>
+        <div class="row">
+          <input type="number" id="ampAmount" min="0" step="any">
+          <span class="unit-suffix" id="ampUnitLabel">mg</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="ampCount">Số ống / lọ pha</label>
+        <input type="number" id="ampCount" min="0" step="any" value="1">
+      </div>
+
+      <div class="field">
+        <label for="dilVolume">Tổng thể tích bơm tiêm (pha đủ)</label>
+        <div class="row">
+          <input type="number" id="dilVolume" min="1" step="any" value="50">
+          <span class="unit-suffix">ml</span>
+        </div>
+      </div>
+
+      <div class="field" id="weightField">
+        <label for="weight">Cân nặng bệnh nhân</label>
+        <div class="row">
+          <input type="number" id="weight" min="0" step="any">
+          <span class="unit-suffix">kg</span>
+        </div>
+        <p class="warn" id="weightWarn">Cần nhập cân nặng để tính liều chuẩn của thuốc này (mcg/kg hoặc mg/kg).</p>
+      </div>
+
+      <div class="field" id="rateField">
+        <label for="rate">Tốc độ bơm tiêm điện</label>
+        <div class="row">
+          <input type="number" id="rate" min="0" step="any">
+          <span class="unit-suffix">ml/h</span>
+        </div>
+      </div>
+
+      <div class="field" id="desiredField" style="display:none;">
+        <label for="desiredValue">Liều mong muốn</label>
+        <div class="row">
+          <input type="number" id="desiredValue" min="0" step="any">
+          <select id="desiredUnit" style="max-width:150px;"></select>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: results -->
+    <div class="panel" id="resultsPanelForward">
+      <p class="eyebrow">Kết quả · liều theo tốc độ đã cài</p>
+      <div class="headline-dose">
+        <div class="tag" id="headlineTag">Liều chuẩn</div>
+        <div class="big" id="headlineValue">– <span class="u" id="headlineUnit"></span></div>
+        <div class="ref" id="headlineRef"></div>
+      </div>
+      <table class="conv" id="convTable"></table>
+    </div>
+
+    <div class="panel" id="resultsPanelReverse" style="display:none;">
+      <p class="eyebrow">Kết quả · tốc độ bơm cần cài</p>
+      <div class="reverse-result">
+        <div class="tag">Tốc độ cần cài trên bơm tiêm điện</div>
+        <div class="big"><span id="reverseRate">–</span><span class="u">ml/h</span></div>
+      </div>
+      <p class="ref" style="margin-top:14px;" id="reverseNote"></p>
+    </div>
+  </div>
+
+  <footer>
+    Công cụ hỗ trợ quy đổi đơn vị, không thay thế phác đồ/y lệnh của bệnh viện hay nhận định lâm sàng của bác sĩ điều trị.
+    Khoảng liều tham khảo hiển thị trong app là các mốc thường gặp trong y văn, có thể khác nhau giữa các hướng dẫn/bệnh viện —
+    luôn đối chiếu với phác đồ của đơn vị trước khi áp dụng. Vui lòng kiểm tra lại các con số quan trọng bằng tính toán thủ công trước khi dùng trên lâm sàng.
+  </footer>
+
+</div>
+
+<script>
+// ---------------------------------------------------------------
+// Drug database
+// baseUnit: 'mcg' (mass-based drugs, ampAmount entered in mg, converted x1000)
+//           'UI'  (unit-based drugs, ampAmount entered in UI)
+// keys shown per drug depend on baseUnit; weight-based keys only shown if weightRequired or weight entered
+// ---------------------------------------------------------------
+const DRUGS = [
+  { id:'noradrenalin', name:'Noradrenalin (Norepinephrine)', ampUnit:'mg', ampDefault:4, standard:'mcgKgMin',
+    ref:'Tham khảo: 0,01 – 3 mcg/kg/phút (liều cao hơn tùy đáp ứng lâm sàng).', weightRequired:true },
+  { id:'adrenalin', name:'Adrenalin (Epinephrine)', ampUnit:'mg', ampDefault:1, standard:'mcgKgMin',
+    ref:'Tham khảo: 0,01 – 1 mcg/kg/phút.', weightRequired:true },
+  { id:'dopamin', name:'Dopamin', ampUnit:'mg', ampDefault:200, standard:'mcgKgMin',
+    ref:'Tham khảo: 2 – 20 mcg/kg/phút.', weightRequired:true },
+  { id:'dobutamin', name:'Dobutamin', ampUnit:'mg', ampDefault:250, standard:'mcgKgMin',
+    ref:'Tham khảo: 2 – 20 mcg/kg/phút.', weightRequired:true },
+  { id:'vasopressin', name:'Vasopressin', ampUnit:'UI', ampDefault:20, standard:'UIHour',
+    ref:'Thường dùng liều cố định, không chỉnh theo cân nặng. Tham khảo: 0,01 – 0,04 UI/phút (≈ 0,6 – 2,4 UI/giờ).', weightRequired:false },
+  { id:'nitroglycerin', name:'Nitroglycerin (Nitromint/Lenitral)', ampUnit:'mg', ampDefault:25, standard:'mcgMin',
+    ref:'Thường không tính theo cân nặng. Tham khảo: 5 – 200 mcg/phút.', weightRequired:false },
+  { id:'nicardipin', name:'Nicardipin (Loxen)', ampUnit:'mg', ampDefault:10, standard:'mgHour',
+    ref:'Thường không tính theo cân nặng. Tham khảo: 5 – 15 mg/giờ.', weightRequired:false },
+  { id:'milrinone', name:'Milrinone', ampUnit:'mg', ampDefault:10, standard:'mcgKgMin',
+    ref:'Tham khảo duy trì: 0,25 – 0,75 mcg/kg/phút (chưa gồm liều nạp).', weightRequired:true },
+  { id:'amiodarone', name:'Amiodarone (Cordarone) – duy trì', ampUnit:'mg', ampDefault:150, standard:'mgHour',
+    ref:'Tham khảo duy trì: 30 – 60 mg/giờ ban đầu, giảm dần theo phác đồ (chưa gồm liều nạp).', weightRequired:false },
+  { id:'esmolol', name:'Esmolol', ampUnit:'mg', ampDefault:100, standard:'mcgKgMin',
+    ref:'Tham khảo duy trì: 25 – 300 mcg/kg/phút (chưa gồm liều nạp).', weightRequired:true },
+  { id:'diltiazem', name:'Diltiazem', ampUnit:'mg', ampDefault:25, standard:'mgHour',
+    ref:'Tham khảo duy trì: 5 – 15 mg/giờ (chưa gồm liều nạp).', weightRequired:false },
+  { id:'fentanyl', name:'Fentanyl (giảm đau/an thần liên tục)', ampUnit:'mg', ampDefault:0.5, standard:'mcgKgHour',
+    ref:'Tham khảo: 0,5 – 2 mcg/kg/giờ. Ống thường ghi 500 mcg/10ml = 0,5 mg.', weightRequired:true },
+  { id:'midazolam', name:'Midazolam (an thần liên tục)', ampUnit:'mg', ampDefault:15, standard:'mcgKgMin',
+    ref:'Tham khảo: khoảng 0,3 – 1,7 mcg/kg/phút (≈ 0,02 – 0,1 mg/kg/giờ), chỉnh theo mục tiêu an thần.', weightRequired:true },
+  { id:'propofol', name:'Propofol (an thần)', ampUnit:'mg', ampDefault:200, standard:'mgKgHour',
+    ref:'Tham khảo: 0,3 – 4 mg/kg/giờ tùy mục tiêu an thần.', weightRequired:true },
+  { id:'insulin', name:'Insulin nhanh (Actrapid) truyền TM', ampUnit:'UI', ampDefault:50, standard:'UIHour',
+    ref:'Không tính theo cân nặng. Thường bắt đầu 1 – 6 UI/giờ, chỉnh theo đường huyết theo phác đồ.', weightRequired:false },
+  { id:'custom', name:'— Tùy chỉnh / thuốc khác —', ampUnit:'mg', ampDefault:1, standard:'mcgKgMin',
+    ref:'Nhập thông số theo hướng dẫn/phác đồ của đơn vị.', weightRequired:false, isCustom:true },
+];
+
+const UNIT_LABELS = {
+  mcgKgMin:'mcg/kg/phút', mcgKgHour:'mcg/kg/giờ',
+  mcgMin:'mcg/phút', mcgHour:'mcg/giờ',
+  mgMin:'mg/phút', mgHour:'mg/giờ',
+  mgKgMin:'mg/kg/phút', mgKgHour:'mg/kg/giờ',
+  UIMin:'UI/phút', UIHour:'UI/giờ'
+};
+
+const MASS_KEYS_NO_WEIGHT = ['mcgMin','mcgHour','mgMin','mgHour'];
+const MASS_KEYS_WEIGHT   = ['mcgKgMin','mcgKgHour','mgKgMin','mgKgHour'];
+const UI_KEYS            = ['UIMin','UIHour'];
+
+// ---------------- DOM refs ----------------
+const drugSelect = document.getElementById('drugSelect');
+const customUnitField = document.getElementById('customUnitField');
+const customUnit = document.getElementById('customUnit');
+const ampAmount = document.getElementById('ampAmount');
+const ampUnitLabel = document.getElementById('ampUnitLabel');
+const ampCount = document.getElementById('ampCount');
+const dilVolume = document.getElementById('dilVolume');
+const weightField = document.getElementById('weightField');
+const weightInput = document.getElementById('weight');
+const weightWarn = document.getElementById('weightWarn');
+const rateField = document.getElementById('rateField');
+const rateInput = document.getElementById('rate');
+const desiredField = document.getElementById('desiredField');
+const desiredValue = document.getElementById('desiredValue');
+const desiredUnit = document.getElementById('desiredUnit');
+
+const stripDrug = document.getElementById('stripDrug');
+const stripConc = document.getElementById('stripConc');
+const stripConcUnit = document.getElementById('stripConcUnit');
+const stripRate = document.getElementById('stripRate');
+const stripDose = document.getElementById('stripDose');
+const stripDoseUnit = document.getElementById('stripDoseUnit');
+const stripTime = document.getElementById('stripTime');
+
+const headlineTag = document.getElementById('headlineTag');
+const headlineValue = document.getElementById('headlineValue');
+const headlineUnit = document.getElementById('headlineUnit');
+const headlineRef = document.getElementById('headlineRef');
+const convTable = document.getElementById('convTable');
+
+const resultsPanelForward = document.getElementById('resultsPanelForward');
+const resultsPanelReverse = document.getElementById('resultsPanelReverse');
+const reverseRate = document.getElementById('reverseRate');
+const reverseNote = document.getElementById('reverseNote');
+
+const modeForwardBtn = document.getElementById('modeForward');
+const modeReverseBtn = document.getElementById('modeReverse');
+
+let mode = 'forward';
+
+// ---------------- populate drug select ----------------
+DRUGS.forEach(d=>{
+  const opt = document.createElement('option');
+  opt.value = d.id; opt.textContent = d.name;
+  drugSelect.appendChild(opt);
+});
+
+function currentDrug(){
+  return DRUGS.find(d=>d.id===drugSelect.value);
+}
+function currentAmpUnit(){
+  const d = currentDrug();
+  return d.isCustom ? customUnit.value : d.ampUnit;
+}
+function applicableKeys(){
+  const unit = currentAmpUnit();
+  if(unit==='UI') return UI_KEYS;
+  const hasWeight = parseFloat(weightInput.value) > 0;
+  return hasWeight ? MASS_KEYS_NO_WEIGHT.concat(MASS_KEYS_WEIGHT) : MASS_KEYS_NO_WEIGHT;
+}
+
+function onDrugChange(){
+  const d = currentDrug();
+  customUnitField.style.display = d.isCustom ? 'block' : 'none';
+  ampAmount.value = d.ampDefault;
+  const unit = currentAmpUnit();
+  ampUnitLabel.textContent = unit;
+  weightWarn.classList.toggle('show', d.weightRequired && !(parseFloat(weightInput.value)>0));
+  populateDesiredUnitOptions();
+  compute();
+}
+
+function populateDesiredUnitOptions(){
+  const keys = applicableKeysForCustomAware();
+  desiredUnit.innerHTML = '';
+  keys.forEach(k=>{
+    const opt = document.createElement('option');
+    opt.value = k; opt.textContent = UNIT_LABELS[k];
+    desiredUnit.appendChild(opt);
+  });
+  const d = currentDrug();
+  if(keys.includes(d.standard)) desiredUnit.value = d.standard;
+}
+
+// same as applicableKeys but always includes weight-keys as options (user may fill weight in reverse mode)
+function applicableKeysForCustomAware(){
+  const unit = currentAmpUnit();
+  if(unit==='UI') return UI_KEYS;
+  return MASS_KEYS_NO_WEIGHT.concat(MASS_KEYS_WEIGHT);
+}
+
+drugSelect.addEventListener('change', onDrugChange);
+customUnit.addEventListener('change', onDrugChange);
+[ampAmount, ampCount, dilVolume, weightInput, rateInput, desiredValue, desiredUnit].forEach(el=>{
+  el.addEventListener('input', ()=>{
+    weightWarn.classList.toggle('show', currentDrug().weightRequired && !(parseFloat(weightInput.value)>0));
+    compute();
+  });
+});
+
+modeForwardBtn.addEventListener('click', ()=>setMode('forward'));
+modeReverseBtn.addEventListener('click', ()=>setMode('reverse'));
+
+function setMode(m){
+  mode = m;
+  modeForwardBtn.classList.toggle('active', m==='forward');
+  modeReverseBtn.classList.toggle('active', m==='reverse');
+  rateField.style.display = m==='forward' ? 'block' : 'none';
+  desiredField.style.display = m==='reverse' ? 'block' : 'none';
+  resultsPanelForward.style.display = m==='forward' ? 'block' : 'none';
+  resultsPanelReverse.style.display = m==='reverse' ? 'block' : 'none';
+  if(m==='reverse') populateDesiredUnitOptions();
+  compute();
+}
+
+// ---------------- core calculation ----------------
+function getConcentration(){
+  // returns { conc, unit } where unit is 'mcg' or 'UI', conc = base-unit per ml
+  const amount = parseFloat(ampAmount.value) || 0;
+  const count = parseFloat(ampCount.value) || 0;
+  const vol = parseFloat(dilVolume.value) || 0;
+  const unit = currentAmpUnit();
+  let totalBase;
+  if(unit==='UI'){
+    totalBase = amount*count; // UI
+  } else {
+    totalBase = amount*count*1000; // mg -> mcg
+  }
+  const conc = vol>0 ? totalBase/vol : 0;
+  return { conc, baseUnit: unit==='UI' ? 'UI' : 'mcg' };
+}
+
+function basePerHourToKey(basePerHour, key, weight, baseUnit){
+  // basePerHour is mcg/h or UI/h
+  switch(key){
+    case 'mcgHour': return basePerHour;
+    case 'mcgMin': return basePerHour/60;
+    case 'mgHour': return basePerHour/1000;
+    case 'mgMin': return basePerHour/1000/60;
+    case 'mcgKgHour': return weight>0 ? basePerHour/weight : NaN;
+    case 'mcgKgMin': return weight>0 ? basePerHour/weight/60 : NaN;
+    case 'mgKgHour': return weight>0 ? basePerHour/1000/weight : NaN;
+    case 'mgKgMin': return weight>0 ? basePerHour/1000/weight/60 : NaN;
+    case 'UIHour': return basePerHour;
+    case 'UIMin': return basePerHour/60;
+  }
+  return NaN;
+}
+
+function keyToBasePerHour(key, value, weight){
+  switch(key){
+    case 'mcgHour': return value;
+    case 'mcgMin': return value*60;
+    case 'mgHour': return value*1000;
+    case 'mgMin': return value*1000*60;
+    case 'mcgKgHour': return value*weight;
+    case 'mcgKgMin': return value*weight*60;
+    case 'mgKgHour': return value*1000*weight;
+    case 'mgKgMin': return value*1000*weight*60;
+    case 'UIHour': return value;
+    case 'UIMin': return value*60;
+  }
+  return NaN;
+}
+
+function fmt(n, maxDp=4){
+  if(!isFinite(n)) return '–';
+  if(n===0) return '0';
+  const abs = Math.abs(n);
+  let dp = maxDp;
+  if(abs>=100) dp=1; else if(abs>=10) dp=2; else if(abs>=1) dp=3;
+  return n.toFixed(dp).replace(/\.?0+$/,'').replace(/^$/,'0');
+}
+
+function compute(){
+  const d = currentDrug();
+  const { conc, baseUnit } = getConcentration();
+  const weight = parseFloat(weightInput.value) || 0;
+  const now = new Date();
+  stripTime.textContent = now.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+  stripDrug.textContent = d.name;
+  stripConc.childNodes[0].nodeValue = conc>0 ? fmt(conc,3) : '–';
+  stripConcUnit.textContent = ' ' + baseUnit + '/ml';
+
+  if(mode==='forward'){
+    const rate = parseFloat(rateInput.value) || 0;
+    stripRate.childNodes[0].nodeValue = rate>0 ? fmt(rate,2) : '–';
+    const basePerHour = conc*rate;
+    const keys = applicableKeys();
+
+    // headline
+    const stdVal = basePerHourToKey(basePerHour, d.standard, weight, baseUnit);
+    headlineTag.textContent = 'Liều chuẩn · ' + d.name;
+    headlineValue.childNodes[0].nodeValue = isFinite(stdVal) ? fmt(stdVal) + ' ' : '– ';
+    headlineUnit.textContent = UNIT_LABELS[d.standard];
+    headlineRef.textContent = d.ref;
+
+    stripDose.childNodes[0].nodeValue = isFinite(stdVal) ? fmt(stdVal) : '–';
+    stripDoseUnit.textContent = ' ' + UNIT_LABELS[d.standard];
+
+    // conversion table
+    convTable.innerHTML = '';
+    keys.forEach(k=>{
+      const v = basePerHourToKey(basePerHour, k, weight, baseUnit);
+      const tr = document.createElement('tr');
+      if(k===d.standard) tr.classList.add('highlight');
+      tr.innerHTML = `<td class="k">${UNIT_LABELS[k]}</td><td class="v">${isFinite(v)?fmt(v):'–'}</td>`;
+      convTable.appendChild(tr);
+    });
+  } else {
+    // reverse mode
+    stripRate.childNodes[0].nodeValue = '–';
+    const key = desiredUnit.value;
+    const val = parseFloat(desiredValue.value) || 0;
+    const needsWeight = key.includes('Kg');
+    let rate = NaN;
+    if(conc>0 && val>0 && (!needsWeight || weight>0)){
+      const basePerHour = keyToBasePerHour(key, val, weight);
+      rate = basePerHour/conc;
+    }
+    reverseRate.textContent = isFinite(rate) && rate>0 ? fmt(rate,2) : '–';
+    stripRate.childNodes[0].nodeValue = isFinite(rate) && rate>0 ? fmt(rate,2) : '–';
+    stripDose.childNodes[0].nodeValue = val>0 ? fmt(val) : '–';
+    stripDoseUnit.textContent = ' ' + UNIT_LABELS[key];
+
+    if(needsWeight && !(weight>0)){
+      reverseNote.textContent = 'Nhập cân nặng bệnh nhân để tính tốc độ theo đơn vị/kg.';
+    } else if(conc<=0){
+      reverseNote.textContent = 'Kiểm tra lại hàm lượng, số ống và thể tích pha.';
+    } else {
+      reverseNote.textContent = `Ứng với nồng độ hiện tại (${fmt(conc,3)} ${baseUnit}/ml), cần cài tốc độ trên để đạt liều ${fmt(val)} ${UNIT_LABELS[key]}.`;
+    }
+  }
+}
+
+// init
+onDrugChange();
+setMode('forward');
+</script>
+</body>
+</html>
