@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Máy tính liều thuốc vận mạch · ICU</title>
+<title>Máy tính liều thuốc · ICU &amp; Lao</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -34,7 +34,7 @@
   header.app-header{
     display:flex; align-items:baseline; justify-content:space-between;
     flex-wrap:wrap; gap:8px;
-    margin-bottom:18px;
+    margin-bottom:16px;
     border-bottom:1px solid var(--line);
     padding-bottom:14px;
   }
@@ -46,7 +46,21 @@
     font-size:.78rem; color:var(--muted); margin:0;
   }
 
-  /* ---------- pump LCD strip (signature element) ---------- */
+  /* ---------- top-level module tabs ---------- */
+  .top-tabs{
+    display:flex; gap:0; margin-bottom:20px;
+    border:1px solid var(--line); border-radius:8px; overflow:hidden; width:fit-content;
+  }
+  .top-tabs button{
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:.86rem; padding:10px 18px; background:var(--panel);
+    color:var(--muted); border:none; cursor:pointer; transition:background .15s,color .15s;
+    font-weight:500;
+  }
+  .top-tabs button.active{background:var(--amber); color:#241a08; font-weight:700;}
+  .top-tabs button:not(.active):hover{background:var(--panel-raised); color:var(--text);}
+
+  /* ---------- pump LCD strip (signature element, vasoactive tab) ---------- */
   .pump-strip{
     background:#0A1210;
     border:1px solid var(--line);
@@ -85,10 +99,11 @@
   }
   .readout .unit{font-size:1rem; color:var(--muted); font-weight:400; margin-left:4px;}
 
-  /* ---------- mode toggle ---------- */
+  /* ---------- generic sub-tab / mode toggle ---------- */
   .mode-toggle{
     display:flex; gap:0; margin-bottom:20px;
     border:1px solid var(--line); border-radius:8px; overflow:hidden; width:fit-content;
+    flex-wrap:wrap;
   }
   .mode-toggle button{
     font-family:'IBM Plex Sans',sans-serif;
@@ -112,6 +127,8 @@
     border-radius:10px;
     padding:18px 20px 22px;
   }
+  .panel + .panel{margin-top:0;}
+  .panel.spaced{margin-bottom:20px;}
   .panel .eyebrow{
     font-family:'IBM Plex Mono',monospace;
     font-size:.68rem; letter-spacing:.12em; text-transform:uppercase;
@@ -191,6 +208,19 @@
   }
   .reverse-result .u{font-size:1.1rem; color:var(--muted); margin-left:6px;}
 
+  /* ---------- TB weight-band table ---------- */
+  table.bandtable{width:100%; border-collapse:collapse; font-size:.85rem; margin-top:4px;}
+  table.bandtable th{
+    font-family:'IBM Plex Mono',monospace; font-size:.66rem; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--muted); text-align:left; padding:6px 4px; border-bottom:1px solid var(--line);
+  }
+  table.bandtable td{padding:8px 4px; border-bottom:1px solid var(--line); font-family:'IBM Plex Mono',monospace;}
+  table.bandtable tr:last-child td{border-bottom:none;}
+  table.bandtable tr.current{background:rgba(79,216,184,0.08);}
+  table.bandtable tr.current td{color:var(--teal); font-weight:700;}
+  table.bandtable td.band{font-family:'IBM Plex Sans',sans-serif; color:var(--muted); font-weight:400;}
+  table.bandtable tr.current td.band{color:var(--teal); font-weight:600;}
+
   footer{
     margin-top:28px; font-size:.72rem; color:var(--muted); line-height:1.6;
     border-top:1px solid var(--line); padding-top:14px;
@@ -205,9 +235,17 @@
 <div class="wrap">
 
   <header class="app-header">
-    <h1>Máy tính liều thuốc truyền tĩnh mạch</h1>
-    <p class="sub">Bơm tiêm điện (ml/h) ⇄ liều chuẩn theo cân nặng · dùng nội bộ khoa ICU</p>
+    <h1>Máy tính liều thuốc truyền tĩnh mạch &amp; thuốc lao</h1>
+    <p class="sub">Dùng nội bộ khoa ICU / đơn vị điều trị Lao</p>
   </header>
+
+  <div class="top-tabs">
+    <button id="topTabVM" class="active">Thuốc vận mạch (ICU)</button>
+    <button id="topTabTB">Thuốc lao</button>
+  </div>
+
+  <!-- =================== TAB 1: VASOACTIVE / ICU =================== -->
+  <div id="panelVM">
 
   <div class="pump-strip">
     <div class="row1">
@@ -321,21 +359,156 @@
     </div>
   </div>
 
+  </div><!-- /panelVM -->
+
+  <!-- =================== TAB 2: TB DRUGS =================== -->
+  <div id="panelTB" style="display:none;">
+
+    <div class="panel spaced">
+      <p class="eyebrow">Cân nặng bệnh nhân (dùng chung cho cả 2 cách tính bên dưới)</p>
+      <div class="field" style="max-width:220px; margin-bottom:0;">
+        <div class="row">
+          <input type="number" id="tbWeight" min="0" step="any">
+          <span class="unit-suffix">kg</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mode-toggle">
+      <button id="tbModeFDC" class="active">Viên phối hợp (FDC) · Lao hàng 1</button>
+      <button id="tbModeSingle">Từng thuốc (mg/kg / liều cố định)</button>
+    </div>
+
+    <!-- ---- FDC weight-band lookup ---- -->
+    <div id="tbPanelFDC">
+      <div class="grid">
+        <div class="panel">
+          <p class="eyebrow">Viên phối hợp liều cố định (FDC) — theo băng cân nặng WHO</p>
+          <p class="hint" style="margin-bottom:14px;">
+            Giai đoạn tấn công: viên <strong>RHZE</strong> (Rifampicin 150mg + Isoniazid 75mg +
+            Pyrazinamide 400mg + Ethambutol 275mg).<br>
+            Giai đoạn duy trì: viên <strong>RH</strong> (Rifampicin 150mg + Isoniazid 75mg).<br>
+            Bảng theo băng cân nặng chuẩn WHO / Global Drug Facility — đối chiếu với phác đồ hiện hành
+            của Chương trình Chống Lao Quốc gia trước khi áp dụng.
+          </p>
+          <table class="bandtable" id="tbFdcTable">
+            <thead><tr><th>Cân nặng</th><th>RHZE (tấn công)</th><th>RH (duy trì)</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <p class="hint" style="margin-top:10px;">Dưới 25kg: dùng phác đồ nhi khoa / thuốc rời theo mg/kg, không áp dụng bảng người lớn này.</p>
+        </div>
+        <div class="panel">
+          <p class="eyebrow">Kết quả theo cân nặng đã nhập</p>
+          <div class="headline-dose">
+            <div class="tag">Giai đoạn tấn công — RHZE</div>
+            <div class="big"><span id="tbFdcRhze">–</span> <span class="u">viên/ngày</span></div>
+          </div>
+          <div class="headline-dose">
+            <div class="tag">Giai đoạn duy trì — RH</div>
+            <div class="big"><span id="tbFdcRh">–</span> <span class="u">viên/ngày</span></div>
+          </div>
+          <p class="ref" id="tbFdcNote">Nhập cân nặng bệnh nhân ở trên để xem kết quả.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---- Single drug mg/kg calculator ---- -->
+    <div id="tbPanelSingle" style="display:none;">
+      <div class="grid">
+        <div class="panel">
+          <p class="eyebrow">Thuốc &amp; liều chuẩn</p>
+
+          <div class="field">
+            <label for="tbDrugSelect">Thuốc lao</label>
+            <select id="tbDrugSelect"></select>
+          </div>
+
+          <div class="field" id="tbPerKgField">
+            <label for="tbDoseMgKg">Liều chuẩn</label>
+            <div class="row">
+              <input type="number" id="tbDoseMgKg" min="0" step="any">
+              <span class="unit-suffix">mg/kg/ngày</span>
+            </div>
+            <p class="hint" id="tbRangeHint"></p>
+          </div>
+
+          <div class="field" id="tbFixedField" style="display:none;">
+            <label for="tbDoseFixed">Liều cố định (không tính theo cân nặng)</label>
+            <div class="row">
+              <input type="number" id="tbDoseFixed" min="0" step="any">
+              <span class="unit-suffix">mg/ngày</span>
+            </div>
+            <p class="hint" id="tbFixedHint"></p>
+          </div>
+
+          <div class="field" id="tbTabletField">
+            <label for="tbStrength">Hàm lượng mỗi viên</label>
+            <div class="row">
+              <input type="number" id="tbStrength" min="0" step="any">
+              <span class="unit-suffix">mg/viên</span>
+            </div>
+          </div>
+
+          <div class="field" id="tbVialFields" style="display:none;">
+            <label>Ống / lọ dùng để pha</label>
+            <div class="row">
+              <input type="number" id="tbVialMg" min="0" step="any">
+              <span class="unit-suffix">mg/lọ</span>
+              <input type="number" id="tbVialMl" min="0" step="any">
+              <span class="unit-suffix">ml/lọ</span>
+            </div>
+          </div>
+
+          <p class="warn" id="tbWeightWarn">Cần nhập cân nặng bệnh nhân ở trên để tính liều thuốc này.</p>
+        </div>
+
+        <div class="panel">
+          <p class="eyebrow">Kết quả</p>
+          <div class="headline-dose">
+            <div class="tag" id="tbHeadlineTag">Tổng liều/ngày</div>
+            <div class="big" id="tbTotalMg">– <span class="u">mg/ngày</span></div>
+            <div class="ref" id="tbMgKgEquiv"></div>
+          </div>
+          <table class="conv" id="tbResultTable"></table>
+          <p class="ref" style="margin-top:12px;" id="tbDrugNote"></p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /panelTB -->
+
   <footer>
-    Công cụ hỗ trợ quy đổi đơn vị, không thay thế phác đồ/y lệnh của bệnh viện hay nhận định lâm sàng của bác sĩ điều trị.
-    Khoảng liều tham khảo hiển thị trong app là các mốc thường gặp trong y văn, có thể khác nhau giữa các hướng dẫn/bệnh viện —
-    luôn đối chiếu với phác đồ của đơn vị trước khi áp dụng. Vui lòng kiểm tra lại các con số quan trọng bằng tính toán thủ công trước khi dùng trên lâm sàng.
+    Công cụ hỗ trợ quy đổi đơn vị và tính liều theo cân nặng, không thay thế phác đồ/y lệnh của
+    bệnh viện hay nhận định lâm sàng của bác sĩ điều trị. Số liệu tham khảo dựa trên hướng dẫn của
+    Tổ chức Y tế Thế giới (WHO) — khoảng liều và bảng cân nặng có thể khác với phác đồ hiện hành
+    của Chương trình Chống Lao Quốc gia hoặc bệnh viện; luôn đối chiếu trước khi áp dụng và kiểm
+    tra lại các con số quan trọng bằng tính toán thủ công trước khi dùng trên lâm sàng.
   </footer>
 
 </div>
 
 <script>
-// ---------------------------------------------------------------
-// Drug database
-// baseUnit: 'mcg' (mass-based drugs, ampAmount entered in mg, converted x1000)
-//           'UI'  (unit-based drugs, ampAmount entered in UI)
-// keys shown per drug depend on baseUnit; weight-based keys only shown if weightRequired or weight entered
-// ---------------------------------------------------------------
+/* =========================================================================
+   TAB SWITCHING (top-level)
+   ========================================================================= */
+const topTabVM = document.getElementById('topTabVM');
+const topTabTB = document.getElementById('topTabTB');
+const panelVM = document.getElementById('panelVM');
+const panelTB = document.getElementById('panelTB');
+
+topTabVM.addEventListener('click', ()=>{
+  topTabVM.classList.add('active'); topTabTB.classList.remove('active');
+  panelVM.style.display='block'; panelTB.style.display='none';
+});
+topTabTB.addEventListener('click', ()=>{
+  topTabTB.classList.add('active'); topTabVM.classList.remove('active');
+  panelTB.style.display='block'; panelVM.style.display='none';
+  tbCompute();
+});
+
+/* =========================================================================
+   PART 1: VASOACTIVE / INFUSION CALCULATOR (ml/h <-> mcg/kg/min etc.)
+   ========================================================================= */
 const DRUGS = [
   { id:'noradrenalin', name:'Noradrenalin (Norepinephrine)', ampUnit:'mg', ampDefault:4, standard:'mcgKgMin',
     ref:'Tham khảo: 0,01 – 3 mcg/kg/phút (liều cao hơn tùy đáp ứng lâm sàng).', weightRequired:true },
@@ -383,7 +556,6 @@ const MASS_KEYS_NO_WEIGHT = ['mcgMin','mcgHour','mgMin','mgHour'];
 const MASS_KEYS_WEIGHT   = ['mcgKgMin','mcgKgHour','mgKgMin','mgKgHour'];
 const UI_KEYS            = ['UIMin','UIHour'];
 
-// ---------------- DOM refs ----------------
 const drugSelect = document.getElementById('drugSelect');
 const customUnitField = document.getElementById('customUnitField');
 const customUnit = document.getElementById('customUnit');
@@ -424,16 +596,13 @@ const modeReverseBtn = document.getElementById('modeReverse');
 
 let mode = 'forward';
 
-// ---------------- populate drug select ----------------
 DRUGS.forEach(d=>{
   const opt = document.createElement('option');
   opt.value = d.id; opt.textContent = d.name;
   drugSelect.appendChild(opt);
 });
 
-function currentDrug(){
-  return DRUGS.find(d=>d.id===drugSelect.value);
-}
+function currentDrug(){ return DRUGS.find(d=>d.id===drugSelect.value); }
 function currentAmpUnit(){
   const d = currentDrug();
   return d.isCustom ? customUnit.value : d.ampUnit;
@@ -467,8 +636,6 @@ function populateDesiredUnitOptions(){
   const d = currentDrug();
   if(keys.includes(d.standard)) desiredUnit.value = d.standard;
 }
-
-// same as applicableKeys but always includes weight-keys as options (user may fill weight in reverse mode)
 function applicableKeysForCustomAware(){
   const unit = currentAmpUnit();
   if(unit==='UI') return UI_KEYS;
@@ -499,25 +666,19 @@ function setMode(m){
   compute();
 }
 
-// ---------------- core calculation ----------------
 function getConcentration(){
-  // returns { conc, unit } where unit is 'mcg' or 'UI', conc = base-unit per ml
   const amount = parseFloat(ampAmount.value) || 0;
   const count = parseFloat(ampCount.value) || 0;
   const vol = parseFloat(dilVolume.value) || 0;
   const unit = currentAmpUnit();
   let totalBase;
-  if(unit==='UI'){
-    totalBase = amount*count; // UI
-  } else {
-    totalBase = amount*count*1000; // mg -> mcg
-  }
+  if(unit==='UI'){ totalBase = amount*count; }
+  else { totalBase = amount*count*1000; }
   const conc = vol>0 ? totalBase/vol : 0;
   return { conc, baseUnit: unit==='UI' ? 'UI' : 'mcg' };
 }
 
-function basePerHourToKey(basePerHour, key, weight, baseUnit){
-  // basePerHour is mcg/h or UI/h
+function basePerHourToKey(basePerHour, key, weight){
   switch(key){
     case 'mcgHour': return basePerHour;
     case 'mcgMin': return basePerHour/60;
@@ -532,7 +693,6 @@ function basePerHourToKey(basePerHour, key, weight, baseUnit){
   }
   return NaN;
 }
-
 function keyToBasePerHour(key, value, weight){
   switch(key){
     case 'mcgHour': return value;
@@ -574,8 +734,7 @@ function compute(){
     const basePerHour = conc*rate;
     const keys = applicableKeys();
 
-    // headline
-    const stdVal = basePerHourToKey(basePerHour, d.standard, weight, baseUnit);
+    const stdVal = basePerHourToKey(basePerHour, d.standard, weight);
     headlineTag.textContent = 'Liều chuẩn · ' + d.name;
     headlineValue.childNodes[0].nodeValue = isFinite(stdVal) ? fmt(stdVal) + ' ' : '– ';
     headlineUnit.textContent = UNIT_LABELS[d.standard];
@@ -584,17 +743,15 @@ function compute(){
     stripDose.childNodes[0].nodeValue = isFinite(stdVal) ? fmt(stdVal) : '–';
     stripDoseUnit.textContent = ' ' + UNIT_LABELS[d.standard];
 
-    // conversion table
     convTable.innerHTML = '';
     keys.forEach(k=>{
-      const v = basePerHourToKey(basePerHour, k, weight, baseUnit);
+      const v = basePerHourToKey(basePerHour, k, weight);
       const tr = document.createElement('tr');
       if(k===d.standard) tr.classList.add('highlight');
       tr.innerHTML = `<td class="k">${UNIT_LABELS[k]}</td><td class="v">${isFinite(v)?fmt(v):'–'}</td>`;
       convTable.appendChild(tr);
     });
   } else {
-    // reverse mode
     stripRate.childNodes[0].nodeValue = '–';
     const key = desiredUnit.value;
     const val = parseFloat(desiredValue.value) || 0;
@@ -619,9 +776,274 @@ function compute(){
   }
 }
 
-// init
 onDrugChange();
 setMode('forward');
+
+
+/* =========================================================================
+   PART 2: TB DRUGS (first-line FDC weight-band + per-drug mg/kg calculator)
+   Reference: WHO "Treatment of Tuberculosis: Guidelines"; WHO Consolidated
+   Guidelines on Drug-Resistant TB Treatment (2019), Annex 2 weight-band
+   dosing table. Reference ranges only — always cross-check local NTP/hospital
+   protocol.
+   ========================================================================= */
+
+const TB_FDC_BANDS = [
+  { label:'25 – 37 kg', min:25, max:37.999, tabs:2 },
+  { label:'38 – 54 kg', min:38, max:54.999, tabs:3 },
+  { label:'55 – 70 kg', min:55, max:70.999, tabs:4 },
+  { label:'> 70 kg',    min:71, max:99999,  tabs:5 },
+];
+
+// form: 'tablet' | 'injection'
+// doseMode: 'perKg' | 'fixed'
+const TB_DRUGS = [
+  // ---- Hàng 1 (dùng rời, không phải FDC) ----
+  { id:'inh', group:'Hàng 1', name:'Isoniazid (H)', form:'tablet', doseMode:'perKg',
+    doseMgKg:5, rangeText:'4 – 6 mg/kg/ngày', strengthMg:300, maxMgDay:300,
+    note:'Liều tối đa khuyến cáo 300 mg/ngày dù cân nặng lớn. Viên phổ biến 300mg hoặc 100mg — chỉnh hàm lượng nếu dùng loại khác.' },
+  { id:'rif', group:'Hàng 1', name:'Rifampicin (R)', form:'tablet', doseMode:'perKg',
+    doseMgKg:10, rangeText:'8 – 12 mg/kg/ngày', strengthMg:300, maxMgDay:600,
+    note:'Tối đa 600 mg/ngày. Viên/nang phổ biến 300mg hoặc 150mg.' },
+  { id:'pza', group:'Hàng 1', name:'Pyrazinamide (Z)', form:'tablet', doseMode:'perKg',
+    doseMgKg:25, rangeText:'20 – 30 mg/kg/ngày', strengthMg:500, maxMgDay:2000,
+    note:'Người > 70kg có thể dùng đến khoảng 2000 mg/ngày theo bảng cân nặng WHO.' },
+  { id:'emb', group:'Hàng 1', name:'Ethambutol (E)', form:'tablet', doseMode:'perKg',
+    doseMgKg:15, rangeText:'15 – 20 mg/kg/ngày (có thể tới 25 mg/kg trong phác đồ lao kháng thuốc)', strengthMg:400, maxMgDay:1600,
+    note:'Tối đa khoảng 1600 mg/ngày. Theo dõi thị lực và phân biệt màu định kỳ.' },
+  { id:'sm', group:'Hàng 1', name:'Streptomycin (S) — tiêm bắp', form:'injection', doseMode:'perKg',
+    doseMgKg:15, rangeText:'12 – 18 mg/kg/ngày', vialMg:1000, vialMl:3.5, maxMgDay:1000,
+    note:'Tối đa 1g/ngày; cân nhắc giảm còn 750mg/ngày nếu bệnh nhân > 59 tuổi. Thể tích lọ minh họa — pha theo quy trình thực tế của khoa Dược.' },
+
+  // ---- Hàng 2 / Lao kháng thuốc (theo bảng băng cân nặng WHO 2019) ----
+  { id:'lfx', group:'Hàng 2 (kháng thuốc)', name:'Levofloxacin', form:'tablet', doseMode:'fixed',
+    doseFixedMg:750, strengthMg:250,
+    note:'WHO không quy định chặt theo mg/kg. Theo băng cân nặng: 30–45kg ≈750mg; 46–70kg ≈1000mg; >70kg ≈1000mg (viên 250mg). Chỉnh "liều cố định" theo băng cân nặng phù hợp.' },
+  { id:'mfx', group:'Hàng 2 (kháng thuốc)', name:'Moxifloxacin', form:'tablet', doseMode:'fixed',
+    doseFixedMg:400, strengthMg:400,
+    note:'Liều chuẩn 400mg/ngày (1 viên). Liều cao 600–800mg/ngày dùng trong một số phác đồ ngắn hạn chuẩn hoá — chỉnh "liều cố định" nếu áp dụng.' },
+  { id:'bdq', group:'Hàng 2 (kháng thuốc)', name:'Bedaquiline', form:'tablet', doseMode:'fixed',
+    doseFixedMg:400, strengthMg:100,
+    note:'Tấn công: 400mg (4 viên)/ngày × 2 tuần đầu. Duy trì: 200mg (2 viên), 3 lần/tuần (T2-T4-T6) × 22 tuần. Đổi "liều cố định" sang 200 để xem giai đoạn duy trì.' },
+  { id:'lzd', group:'Hàng 2 (kháng thuốc)', name:'Linezolid', form:'tablet', doseMode:'fixed',
+    doseFixedMg:600, strengthMg:600, maxMgDay:1200,
+    note:'Thường 600mg × 1 lần/ngày. Theo dõi độc tính huyết học, thần kinh ngoại biên và thị thần kinh khi dùng kéo dài.' },
+  { id:'cfz', group:'Hàng 2 (kháng thuốc)', name:'Clofazimine', form:'tablet', doseMode:'fixed',
+    doseFixedMg:100, strengthMg:100,
+    note:'Không hiệu chỉnh theo cân nặng trong bảng WHO. Một số phác đồ dùng liều nạp cao hơn trong 2–4 tuần đầu tùy hướng dẫn.' },
+  { id:'cs', group:'Hàng 2 (kháng thuốc)', name:'Cycloserine (hoặc Terizidone)', form:'tablet', doseMode:'perKg',
+    doseMgKg:12.5, rangeText:'10 – 15 mg/kg/ngày', strengthMg:250, maxMgDay:1000,
+    note:'Theo dõi tác dụng phụ thần kinh/tâm thần; có thể cần chia liều trong ngày.' },
+  { id:'dlm', group:'Hàng 2 (kháng thuốc)', name:'Delamanid', form:'tablet', doseMode:'fixed',
+    doseFixedMg:200, strengthMg:50,
+    note:'Chia 2 lần/ngày, mỗi lần 100mg (2 viên 50mg).' },
+  { id:'amk', group:'Hàng 2 (kháng thuốc)', name:'Amikacin — tiêm', form:'injection', doseMode:'perKg',
+    doseMgKg:17.5, rangeText:'15 – 20 mg/kg/ngày', vialMg:500, vialMl:2, maxMgDay:1000,
+    note:'Có thể dùng cách ngày/3 lần mỗi tuần trong phác đồ dài để giảm độc tính tai — thận.' },
+  { id:'eto', group:'Hàng 2 (kháng thuốc)', name:'Ethionamide (hoặc Prothionamide)', form:'tablet', doseMode:'perKg',
+    doseMgKg:17.5, rangeText:'15 – 20 mg/kg/ngày', strengthMg:250, maxMgDay:1000,
+    note:'Thường khởi đầu chia liều trong ngày, gộp 1 lần/ngày khi dung nạp tốt.' },
+  { id:'pas', group:'Hàng 2 (kháng thuốc)', name:'PAS (Para-aminosalicylic acid)', form:'tablet', doseMode:'fixed',
+    doseFixedMg:10000, strengthMg:4000,
+    note:'Tổng liều tham khảo 8 – 12 g/ngày, chia 2 – 3 lần. "Hàm lượng mỗi viên" ở đây tính theo gói 4g — điều chỉnh nếu chế phẩm khác.' },
+];
+
+const tbWeightInput = document.getElementById('tbWeight');
+const tbModeFDCBtn = document.getElementById('tbModeFDC');
+const tbModeSingleBtn = document.getElementById('tbModeSingle');
+const tbPanelFDC = document.getElementById('tbPanelFDC');
+const tbPanelSingle = document.getElementById('tbPanelSingle');
+const tbFdcTableBody = document.querySelector('#tbFdcTable tbody');
+const tbFdcRhze = document.getElementById('tbFdcRhze');
+const tbFdcRh = document.getElementById('tbFdcRh');
+const tbFdcNote = document.getElementById('tbFdcNote');
+
+const tbDrugSelect = document.getElementById('tbDrugSelect');
+const tbPerKgField = document.getElementById('tbPerKgField');
+const tbDoseMgKg = document.getElementById('tbDoseMgKg');
+const tbRangeHint = document.getElementById('tbRangeHint');
+const tbFixedField = document.getElementById('tbFixedField');
+const tbDoseFixed = document.getElementById('tbDoseFixed');
+const tbFixedHint = document.getElementById('tbFixedHint');
+const tbTabletField = document.getElementById('tbTabletField');
+const tbStrength = document.getElementById('tbStrength');
+const tbVialFields = document.getElementById('tbVialFields');
+const tbVialMg = document.getElementById('tbVialMg');
+const tbVialMl = document.getElementById('tbVialMl');
+const tbWeightWarn = document.getElementById('tbWeightWarn');
+
+const tbHeadlineTag = document.getElementById('tbHeadlineTag');
+const tbTotalMg = document.getElementById('tbTotalMg');
+const tbMgKgEquiv = document.getElementById('tbMgKgEquiv');
+const tbResultTable = document.getElementById('tbResultTable');
+const tbDrugNote = document.getElementById('tbDrugNote');
+
+let tbMode = 'fdc';
+
+// build FDC table rows once
+TB_FDC_BANDS.forEach(b=>{
+  const tr = document.createElement('tr');
+  tr.dataset.min = b.min; tr.dataset.max = b.max;
+  tr.innerHTML = `<td class="band">${b.label}</td><td>${b.tabs} viên/ngày</td><td>${b.tabs} viên/ngày</td>`;
+  tbFdcTableBody.appendChild(tr);
+});
+
+// build drug select with optgroups
+const tbGroups = {};
+TB_DRUGS.forEach(d=>{
+  if(!tbGroups[d.group]){
+    tbGroups[d.group] = document.createElement('optgroup');
+    tbGroups[d.group].label = d.group;
+    tbDrugSelect.appendChild(tbGroups[d.group]);
+  }
+  const opt = document.createElement('option');
+  opt.value = d.id; opt.textContent = d.name;
+  tbGroups[d.group].appendChild(opt);
+});
+
+function tbCurrentDrug(){ return TB_DRUGS.find(d=>d.id===tbDrugSelect.value); }
+
+function tbOnDrugChange(){
+  const d = tbCurrentDrug();
+  const isPerKg = d.doseMode === 'perKg';
+  tbPerKgField.style.display = isPerKg ? 'block' : 'none';
+  tbFixedField.style.display = isPerKg ? 'none' : 'block';
+  if(isPerKg){
+    tbDoseMgKg.value = d.doseMgKg;
+    tbRangeHint.textContent = 'Tham khảo WHO: ' + d.rangeText + (d.maxMgDay ? ` · tối đa ~${d.maxMgDay} mg/ngày` : '');
+  } else {
+    tbDoseFixed.value = d.doseFixedMg;
+    tbFixedHint.textContent = 'Không tính theo cân nặng theo bảng WHO — có thể chỉnh nếu phác đồ khác.';
+  }
+  const isInjection = d.form === 'injection';
+  tbTabletField.style.display = isInjection ? 'none' : 'block';
+  tbVialFields.style.display = isInjection ? 'block' : 'none';
+  if(isInjection){
+    tbVialMg.value = d.vialMg; tbVialMl.value = d.vialMl;
+  } else {
+    tbStrength.value = d.strengthMg;
+  }
+  tbDrugNote.textContent = d.note;
+  tbCompute();
+}
+
+function tbRoundHalf(n){ return Math.round(n*2)/2; }
+
+function tbFmt(n, dp=2){
+  if(!isFinite(n)) return '–';
+  if(n===0) return '0';
+  const abs = Math.abs(n);
+  let d = dp;
+  if(abs>=100) d=0; else if(abs>=10) d=1;
+  return n.toFixed(d).replace(/\.?0+$/,'').replace(/^$/,'0');
+}
+
+function tbComputeFDC(){
+  const w = parseFloat(tbWeightInput.value) || 0;
+  let band = null;
+  [...tbFdcTableBody.children].forEach(tr=>{
+    const min = parseFloat(tr.dataset.min), max = parseFloat(tr.dataset.max);
+    const isCurrent = w>0 && w>=min && w<=max;
+    tr.classList.toggle('current', isCurrent);
+    if(isCurrent) band = TB_FDC_BANDS.find(b=>b.min==min);
+  });
+  if(band){
+    tbFdcRhze.textContent = band.tabs;
+    tbFdcRh.textContent = band.tabs;
+    tbFdcNote.textContent = `Cân nặng ${w}kg thuộc băng ${band.label} → ${band.tabs} viên RHZE/ngày (tấn công) và ${band.tabs} viên RH/ngày (duy trì).`;
+  } else {
+    tbFdcRhze.textContent = '–';
+    tbFdcRh.textContent = '–';
+    tbFdcNote.textContent = w>0 && w<25
+      ? 'Cân nặng dưới 25kg — không dùng bảng FDC người lớn này, cần tính theo phác đồ nhi khoa / thuốc rời theo mg/kg.'
+      : 'Nhập cân nặng bệnh nhân ở trên để xem kết quả.';
+  }
+}
+
+function tbComputeSingle(){
+  const d = tbCurrentDrug();
+  const w = parseFloat(tbWeightInput.value) || 0;
+  const isPerKg = d.doseMode === 'perKg';
+  tbWeightWarn.classList.toggle('show', isPerKg && !(w>0));
+
+  let totalMg = NaN;
+  if(isPerKg){
+    const doseMgKg = parseFloat(tbDoseMgKg.value) || 0;
+    if(w>0) totalMg = doseMgKg * w;
+  } else {
+    totalMg = parseFloat(tbDoseFixed.value) || 0;
+  }
+  let cappedNote = '';
+  if(isFinite(totalMg) && d.maxMgDay && totalMg > d.maxMgDay){
+    cappedNote = ` (vượt mốc tối đa tham khảo ${d.maxMgDay} mg/ngày — cân nhắc giới hạn liều)`;
+  }
+
+  tbHeadlineTag.textContent = 'Tổng liều/ngày · ' + d.name;
+  tbTotalMg.childNodes[0].nodeValue = isFinite(totalMg) && totalMg>0 ? tbFmt(totalMg) + ' ' : '– ';
+
+  if(isPerKg && w>0 && isFinite(totalMg)){
+    tbMgKgEquiv.textContent = `= ${tbFmt(totalMg/w,2)} mg/kg/ngày${cappedNote}`;
+  } else if(!isPerKg && w>0 && isFinite(totalMg)){
+    tbMgKgEquiv.textContent = `≈ ${tbFmt(totalMg/w,2)} mg/kg/ngày ở cân nặng hiện tại${cappedNote}`;
+  } else {
+    tbMgKgEquiv.textContent = cappedNote ? cappedNote.trim() : '';
+  }
+
+  tbResultTable.innerHTML = '';
+  if(d.form === 'injection'){
+    const vialMg = parseFloat(tbVialMg.value) || 0;
+    const vialMl = parseFloat(tbVialMl.value) || 0;
+    const concMgMl = vialMl>0 ? vialMg/vialMl : 0;
+    const ml = (isFinite(totalMg) && concMgMl>0) ? totalMg/concMgMl : NaN;
+    const vials = (isFinite(totalMg) && vialMg>0) ? totalMg/vialMg : NaN;
+    [
+      ['Nồng độ dung dịch', isFinite(concMgMl)&&concMgMl>0 ? tbFmt(concMgMl,2)+' mg/ml' : '–'],
+      ['Thể tích cần dùng', isFinite(ml) ? tbFmt(ml,2)+' ml/ngày' : '–'],
+      ['Số lọ cần (làm tròn lên)', isFinite(vials) ? Math.ceil(vials-1e-9)+' lọ' : '–'],
+    ].forEach(([k,v])=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="k">${k}</td><td class="v">${v}</td>`;
+      tbResultTable.appendChild(tr);
+    });
+  } else {
+    const strength = parseFloat(tbStrength.value) || 0;
+    const exact = (isFinite(totalMg) && strength>0) ? totalMg/strength : NaN;
+    const rounded = isFinite(exact) ? tbRoundHalf(exact) : NaN;
+    [
+      ['Số viên chính xác', isFinite(exact) ? tbFmt(exact,2)+' viên/ngày' : '–'],
+      ['Số viên làm tròn (0,5 viên)', isFinite(rounded) ? tbFmt(rounded,1)+' viên/ngày' : '–'],
+    ].forEach(([k,v])=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="k">${k}</td><td class="v">${v}</td>`;
+      tbResultTable.appendChild(tr);
+    });
+  }
+}
+
+function tbCompute(){
+  tbComputeFDC();
+  tbComputeSingle();
+}
+
+tbModeFDCBtn.addEventListener('click', ()=>{
+  tbMode='fdc';
+  tbModeFDCBtn.classList.add('active'); tbModeSingleBtn.classList.remove('active');
+  tbPanelFDC.style.display='block'; tbPanelSingle.style.display='none';
+  tbCompute();
+});
+tbModeSingleBtn.addEventListener('click', ()=>{
+  tbMode='single';
+  tbModeSingleBtn.classList.add('active'); tbModeFDCBtn.classList.remove('active');
+  tbPanelSingle.style.display='block'; tbPanelFDC.style.display='none';
+  tbCompute();
+});
+
+tbDrugSelect.addEventListener('change', tbOnDrugChange);
+[tbWeightInput, tbDoseMgKg, tbDoseFixed, tbStrength, tbVialMg, tbVialMl].forEach(el=>{
+  el.addEventListener('input', tbCompute);
+});
+
+tbOnDrugChange();
 </script>
 </body>
 </html>
