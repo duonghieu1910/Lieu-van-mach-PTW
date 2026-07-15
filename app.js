@@ -1,17 +1,28 @@
 /* =========================================================================
-   TAB SWITCHING (top-level)
+   TAB SWITCHING (top-level) — generic, supports any number of tabs.
+   Each tab button must have a matching data-panel id and an optional
+   data-oncompute function name (called on the window object) to refresh
+   that tab's numbers when it becomes visible.
    ========================================================================= */
-const topTabVM = document.getElementById('topTabVM');
-const topTabTB = document.getElementById('topTabTB');
-const panelVM = document.getElementById('panelVM');
-const panelTB = document.getElementById('panelTB');
+const TAB_BUTTONS = [
+  { btn:'topTabVM', panel:'panelVM', onShow: null },
+  { btn:'topTabTB', panel:'panelTB', onShow: 'tbCompute' },
+  { btn:'topTabKS', panel:'panelKS', onShow: 'ksCompute' },
+];
 
-topTabVM.addEventListener('click', ()=>{
-  topTabVM.classList.add('active'); topTabTB.classList.remove('active');
-  panelVM.style.display='block'; panelTB.style.display='none';
-});
-topTabTB.addEventListener('click', ()=>{
-  topTabTB.classList.add('active'); topTabVM.classList.remove('active');
-  panelTB.style.display='block'; panelVM.style.display='none';
-  tbCompute();
+function showTab(activeId){
+  TAB_BUTTONS.forEach(t=>{
+    const btnEl = document.getElementById(t.btn);
+    const panelEl = document.getElementById(t.panel);
+    const isActive = t.btn === activeId;
+    btnEl.classList.toggle('active', isActive);
+    panelEl.style.display = isActive ? 'block' : 'none';
+    if(isActive && t.onShow && typeof window[t.onShow] === 'function'){
+      window[t.onShow]();
+    }
+  });
+}
+
+TAB_BUTTONS.forEach(t=>{
+  document.getElementById(t.btn).addEventListener('click', ()=> showTab(t.btn));
 });
