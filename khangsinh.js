@@ -44,6 +44,26 @@ function ksCkdStageLabel(egfr){
   return 'G5 — suy thận giai đoạn cuối';
 }
 
+/* ---------------- Colistin MIU calculator ----------------
+   1 MIU (million international units) of colistimethate sodium (CMS)
+   ≈ 30 mg colistin base activity (CBA) ≈ 80 mg CMS.
+   (Some references use 33 mg CBA/MIU — minor variation between sources.)
+   Loading dose: 5 mg/kg CBA, capped at 300 mg (Kaye/healio; drugs.com).
+   Maintenance: total daily CBA (mg) = 2.5 × (1.5×CrCl + 30), split q12h
+   (Garonzik et al., Antimicrob Agents Chemother 2011).
+   ========================================================================= */
+const KS_COLISTIN_MG_CBA_PER_MIU = 30;
+const KS_COLISTIN_MG_CMS_PER_MIU = 80;
+
+function ksColistinLoadingCBA(weightKg){
+  if(!(weightKg>0)) return NaN;
+  return Math.min(5*weightKg, 300);
+}
+function ksColistinDailyMaintenanceCBA(crcl){
+  if(!isFinite(crcl) || crcl<0) return NaN;
+  return 2.5*(1.5*crcl+30);
+}
+
 /* ---------------- Antibiotic dataset ---------------- */
 // bands: ordered high -> low; each has min (inclusive), max (exclusive, Infinity ok), label, dose
 const KS_DRUGS = [
@@ -175,20 +195,21 @@ const KS_DRUGS = [
     source:'FDA prescribing information (levofloxacin), accessdata.fda.gov.'
   },
   {
-    id:'colistin', group:'Khác (đa kháng)', name:'Colistin (Colistimethate — tính theo CBA)',
-    normalDose:'Liều nạp 5mg/kg CBA × 1 lần (tối đa 300mg), truyền trong 30–60 phút — dùng cho MỌI mức CrCl.',
+    id:'colistin', group:'Khác (đa kháng)', name:'Colistin (Colistimethate — tính theo MIU)',
+    liveCalc:'colistin',
+    normalDose:'Liều nạp 5mg/kg CBA (≈ 0,17 MIU/kg), tối đa 300mg (≈ 10 MIU) × 1 lần, truyền trong 30–60 phút — dùng cho MỌI mức CrCl. Xem hộp "Liều tính theo MIU" bên dưới để có số cụ thể theo cân nặng đã nhập.',
     bands:[
-      {min:80, max:Infinity, label:'CrCl ≥ 80', dose:'Duy trì 2,5 – 5mg/kg/ngày CBA, chia 2–4 lần'},
-      {min:50, max:80, label:'CrCl 50 – 79', dose:'Duy trì 2,5 – 3,8mg/kg/ngày CBA, chia 2 lần'},
-      {min:30, max:50, label:'CrCl 30 – 49', dose:'Duy trì ~2,5mg/kg/ngày CBA, chia 2 lần'},
-      {min:10, max:30, label:'CrCl 10 – 29', dose:'Duy trì ~1,5mg/kg/ngày CBA, chia 1–2 lần'},
-      {min:0, max:10, label:'CrCl < 10', dose:'~1,5mg/kg CBA mỗi 36 giờ — nên hội chẩn Dược lâm sàng'},
+      {min:80, max:Infinity, label:'CrCl ≥ 80', dose:'Duy trì 2,5 – 5mg/kg/ngày CBA (≈ 0,08 – 0,17 MIU/kg/ngày), chia 2–4 lần'},
+      {min:50, max:80, label:'CrCl 50 – 79', dose:'Duy trì 2,5 – 3,8mg/kg/ngày CBA (≈ 0,08 – 0,13 MIU/kg/ngày), chia 2 lần'},
+      {min:30, max:50, label:'CrCl 30 – 49', dose:'Duy trì ~2,5mg/kg/ngày CBA (≈ 0,08 MIU/kg/ngày), chia 2 lần'},
+      {min:10, max:30, label:'CrCl 10 – 29', dose:'Duy trì ~1,5mg/kg/ngày CBA (≈ 0,05 MIU/kg/ngày), chia 1–2 lần'},
+      {min:0, max:10, label:'CrCl < 10', dose:'~1,5mg/kg CBA mỗi 36 giờ (≈ 0,05 MIU/kg mỗi 36 giờ) — nên hội chẩn Dược lâm sàng'},
     ],
-    hd:'Duy trì liều theo mức lọc còn lại + bổ sung khoảng 30% liều SAU mỗi buổi lọc máu (colistin bị loại bỏ đáng kể qua HD).',
+    hd:'Duy trì liều theo mức lọc còn lại + bổ sung khoảng 30% liều (tính bằng MIU) SAU mỗi buổi lọc máu (colistin bị loại bỏ đáng kể qua HD).',
     crrt:'Thường tính liều tương đương mức CrCl ≈ 50 ml/phút do CRRT thanh thải colistin đáng kể — nên hội chẩn Dược lâm sàng/vi sinh.',
     pd:'Dữ liệu hạn chế — nên hội chẩn Dược lâm sàng.',
-    caution:'Cửa sổ điều trị hẹp — nguy cơ độc thận và độc thần kinh đáng kể. Có thể quy đổi: 1 triệu đơn vị (MIU) ≈ 33mg CBA ≈ 80mg colistimethate natri (CMS). Bảng chỉ là liều khởi đầu tham khảo — nên hội chẩn Dược lâm sàng/vi sinh khi có thể.',
-    source:'Garonzik et al. Antimicrob Agents Chemother 2011; bảng liều lâm sàng công khai (UCLA/Nebraska Medicine ASP), DailyMed.'
+    caution:'Cửa sổ điều trị hẹp — nguy cơ độc thận và độc thần kinh đáng kể. Quy đổi dùng trong app: 1 triệu đơn vị (MIU) ≈ 30mg CBA ≈ 80mg colistimethate natri (CMS) — một số tài liệu dùng 33mg CBA/MIU, chênh lệch nhỏ. NHẦM LẪN giữa đơn vị MIU / mg CBA / mg CMS là nguyên nhân sai liều thường gặp trên lâm sàng — luôn ghi rõ đơn vị khi kê đơn và đối chiếu với nhãn lọ thuốc đang dùng tại đơn vị (số MIU/lọ có thể khác nhau giữa các hãng). Số liệu chỉ là liều khởi đầu tham khảo — nên hội chẩn Dược lâm sàng/vi sinh khi có thể.',
+    source:'Garonzik et al. Antimicrob Agents Chemother 2011 (công thức liều duy trì); Antimicrob Agents Chemother 2014 (PMC4249546, quy đổi 1 MIU ≈ 30mg CBA ≈ 80mg CMS); bảng liều lâm sàng công khai (UCLA/Nebraska Medicine ASP), DailyMed.'
   },
   {
     id:'amikacin', group:'Aminoglycoside', name:'Amikacin (liều giãn cách/extended-interval)',
@@ -284,6 +305,25 @@ const ksNormalDose = document.getElementById('ksNormalDose');
 const ksAdjustedBox = document.getElementById('ksAdjustedBox');
 const ksAdjustedTag = document.getElementById('ksAdjustedTag');
 const ksAdjustedDose = document.getElementById('ksAdjustedDose');
+
+// Live colistin MIU calculator box — created here so no change to index.html
+// is needed. Inserted right after the generic "liều theo CrCl" box; only
+// shown when the selected drug declares liveCalc:'colistin'.
+const ksColistinBox = document.createElement('div');
+ksColistinBox.id = 'ksColistinLive';
+ksColistinBox.className = 'headline-dose';
+ksColistinBox.style.display = 'none';
+ksColistinBox.style.borderColor = 'var(--amber)';
+ksColistinBox.innerHTML = `
+  <div class="tag">Liều Colistin tính theo MIU (dựa trên cân nặng &amp; CrCl đã nhập ở trên)</div>
+  <div class="big" id="ksColistinLoading" style="font-size:1.1rem;">–</div>
+  <div class="big" id="ksColistinMaint" style="font-size:1.1rem; margin-top:8px;">–</div>
+  <div class="ref" id="ksColistinNote" style="margin-top:8px;"></div>
+`;
+ksAdjustedBox.insertAdjacentElement('afterend', ksColistinBox);
+const ksColistinLoadingEl = ksColistinBox.querySelector('#ksColistinLoading');
+const ksColistinMaintEl = ksColistinBox.querySelector('#ksColistinMaint');
+const ksColistinNoteEl = ksColistinBox.querySelector('#ksColistinNote');
 const ksBandTableBody = document.querySelector('#ksBandTable tbody');
 const ksBandTable = document.getElementById('ksBandTable');
 
@@ -426,6 +466,31 @@ function ksCompute(){
     ksAdjustedTag.textContent = hasCrcl ? `Liều đề xuất tại CrCl = ${ksFmt(crcl,1)} ml/phút` : 'Liều đề xuất theo CrCl';
     ksAdjustedDose.textContent = band ? band.dose : (hasCrcl ? 'Ngoài các băng đã liệt kê — kiểm tra lại giá trị CrCl.' : 'Nhập/kiểm tra CrCl ở trên để xem liều đề xuất.');
     ksBuildBandTable(drug, hasCrcl ? crcl : NaN);
+  }
+
+  // live colistin MIU calculator (weight + CrCl based, continuous formula —
+  // more precise than the band table above, shown only for colistin)
+  if(drug.liveCalc==='colistin'){
+    ksColistinBox.style.display = 'block';
+    const weight = parseFloat(ksWeight.value) || 0;
+
+    const loadingCBA = ksColistinLoadingCBA(weight);
+    const loadingMIU = isFinite(loadingCBA) ? loadingCBA/KS_COLISTIN_MG_CBA_PER_MIU : NaN;
+    ksColistinLoadingEl.textContent = weight>0
+      ? `Liều nạp: ${ksFmt(loadingMIU,2)} MIU (≈ ${ksFmt(loadingCBA,0)} mg CBA ≈ ${ksFmt(loadingCBA*KS_COLISTIN_MG_CMS_PER_MIU/KS_COLISTIN_MG_CBA_PER_MIU,0)} mg CMS), truyền 1 lần trong 30–60 phút`
+      : 'Nhập cân nặng ở phần "Tính mức lọc cầu thận" để tính liều nạp.';
+
+    const dailyCBA = hasCrcl ? ksColistinDailyMaintenanceCBA(crcl) : NaN;
+    const dailyMIU = isFinite(dailyCBA) ? dailyCBA/KS_COLISTIN_MG_CBA_PER_MIU : NaN;
+    const perDoseMIU = isFinite(dailyMIU) ? dailyMIU/2 : NaN;
+    const perDoseCBA = isFinite(dailyCBA) ? dailyCBA/2 : NaN;
+    ksColistinMaintEl.textContent = isFinite(perDoseMIU)
+      ? `Liều duy trì: ${ksFmt(perDoseMIU,2)} MIU mỗi 12 giờ (≈ ${ksFmt(perDoseCBA,0)} mg CBA/lần) — tổng ${ksFmt(dailyMIU,2)} MIU/ngày (≈ ${ksFmt(dailyCBA,0)} mg CBA/ngày)`
+      : 'Nhập/kiểm tra CrCl ở trên để tính liều duy trì.';
+
+    ksColistinNoteEl.textContent = 'Công thức: liều nạp = 5mg/kg CBA (tối đa 300mg); liều duy trì = 2,5 × (1,5×CrCl + 30) mg CBA/ngày, chia 2 lần mỗi 12 giờ (Garonzik 2011). Quy đổi dùng ở đây: 1 MIU ≈ 30mg CBA ≈ 80mg CMS. Đây là công thức liên tục, chính xác hơn bảng theo băng CrCl bên dưới — nhưng vẫn chỉ là liều khởi đầu, nên hội chẩn Dược lâm sàng/vi sinh và đối chiếu số MIU/lọ của thuốc đang dùng tại đơn vị.';
+  } else {
+    ksColistinBox.style.display = 'none';
   }
 
   // dialysis note
