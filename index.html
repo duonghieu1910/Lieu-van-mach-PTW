@@ -20,6 +20,7 @@
   <div class="top-tabs">
     <button id="topTabVM" class="active">Thuốc vận mạch (ICU)</button>
     <button id="topTabTB">Thuốc lao</button>
+    <button id="topTabKS">Kháng sinh (theo MLCT)</button>
   </div>
 
   <!-- =================== TAB 1: VASOACTIVE / ICU =================== -->
@@ -273,7 +274,145 @@
     </div>
 
   </div><!-- /panelTB -->
+<div id="panelKS" style="display:none;">
 
+    <div class="panel spaced" style="border-color:var(--amber);">
+      <p class="eyebrow">Lưu ý nguồn dữ liệu</p>
+      <p class="hint">
+        Liều trong tab này lấy từ <strong>nhãn thuốc FDA</strong> (DailyMed / accessdata.fda.gov) và
+        y văn công khai — <strong>không phải từ Sanford Guide</strong> (tài liệu bản quyền, không
+        truy cập được). Gửi file Sanford Guide nếu anh muốn số liệu khớp chính xác với tài liệu đó.
+        Với Vancomycin, Aminoglycoside (Amikacin/Gentamicin), Colistin — đây là nhóm thuốc
+        <strong>bắt buộc theo dõi nồng độ thuốc trong máu</strong>, số liệu chỉ là liều khởi đầu tham
+        khảo, không thay thế định lượng.
+      </p>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <p class="eyebrow">Tính mức lọc cầu thận</p>
+
+        <div class="field">
+          <label for="ksAge">Tuổi</label>
+          <input type="number" id="ksAge" min="0" step="1">
+        </div>
+
+        <div class="field">
+          <label for="ksSex">Giới tính</label>
+          <select id="ksSex">
+            <option value="M">Nam</option>
+            <option value="F">Nữ</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="ksWeight">Cân nặng thực tế</label>
+          <div class="row">
+            <input type="number" id="ksWeight" min="0" step="any">
+            <span class="unit-suffix">kg</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="ksHeight">Chiều cao (không bắt buộc — để tính cân nặng lý tưởng)</label>
+          <div class="row">
+            <input type="number" id="ksHeight" min="0" step="any">
+            <span class="unit-suffix">cm</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="ksWeightMode">Cân nặng dùng để tính CrCl</label>
+          <select id="ksWeightMode">
+            <option value="auto">Tự động (khuyến nghị)</option>
+            <option value="actual">Cân nặng thực tế</option>
+            <option value="ideal">Cân nặng lý tưởng</option>
+            <option value="adjusted">Cân nặng hiệu chỉnh</option>
+          </select>
+          <p class="hint" id="ksWeightHint"></p>
+        </div>
+
+        <div class="field">
+          <label for="ksScr">Creatinine huyết thanh</label>
+          <div class="row">
+            <input type="number" id="ksScr" min="0" step="any">
+            <select id="ksScrUnit" style="max-width:130px;">
+              <option value="mgdl">mg/dL</option>
+              <option value="umol">µmol/L</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="ksDialysis">Tình trạng lọc máu</label>
+          <select id="ksDialysis">
+            <option value="none">Không lọc máu</option>
+            <option value="hd">Lọc máu ngắt quãng (HD)</option>
+            <option value="crrt">Lọc máu liên tục (CRRT)</option>
+            <option value="pd">Thẩm phân phúc mạc (PD)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="panel">
+        <p class="eyebrow">Kết quả mức lọc cầu thận</p>
+        <div class="headline-dose">
+          <div class="tag">Cockcroft-Gault CrCl (dùng để tra liều thuốc)</div>
+          <div class="big" id="ksCrCl">– <span class="u">ml/phút</span></div>
+          <div class="ref" id="ksWeightUsedNote"></div>
+        </div>
+        <div class="headline-dose">
+          <div class="tag">CKD-EPI 2021 eGFR (tham khảo, đánh giá giai đoạn CKD)</div>
+          <div class="big" id="ksEgfr">– <span class="u">ml/phút/1,73m²</span></div>
+          <div class="ref" id="ksCkdStage"></div>
+        </div>
+        <p class="hint">Nhập đủ thông tin bên trái — kết quả tự cập nhật ở phần chọn kháng sinh bên dưới.</p>
+      </div>
+    </div>
+
+    <div class="panel spaced" style="margin-top:20px;">
+      <p class="eyebrow">Chọn kháng sinh</p>
+      <div class="field">
+        <label for="ksDrugSelect">Kháng sinh</label>
+        <select id="ksDrugSelect"></select>
+      </div>
+      <div class="field" style="max-width:260px; margin-bottom:0;">
+        <label for="ksCrClOverride">CrCl dùng để tra liều (tự điền từ trên, chỉnh tay nếu cần)</label>
+        <div class="row">
+          <input type="number" id="ksCrClOverride" min="0" step="any">
+          <span class="unit-suffix">ml/phút</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <p class="eyebrow">Liều theo mức lọc cầu thận</p>
+        <div class="headline-dose">
+          <div class="tag" id="ksNormalTag">Liều bình thường (chức năng thận bình thường)</div>
+          <div class="big" id="ksNormalDose" style="font-size:1.25rem;">–</div>
+        </div>
+        <div class="headline-dose" id="ksAdjustedBox">
+          <div class="tag" id="ksAdjustedTag">Liều theo CrCl hiện tại</div>
+          <div class="big" id="ksAdjustedDose" style="font-size:1.25rem;">–</div>
+        </div>
+        <table class="bandtable" id="ksBandTable">
+          <thead><tr><th>CrCl (ml/phút)</th><th>Liều đề xuất</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <p class="eyebrow">Lọc máu &amp; ghi chú</p>
+        <div id="ksDialysisNote" class="headline-dose" style="display:none;">
+          <div class="tag" id="ksDialysisTag">Ghi chú lọc máu</div>
+          <div class="ref" id="ksDialysisText" style="margin-top:0;"></div>
+        </div>
+        <table class="conv" id="ksNoteTable"></table>
+        <p class="ref" id="ksSourceNote" style="margin-top:12px;"></p>
+      </div>
+    </div>
+
+  </div><!-- /panelKS -->
   <footer>
     Công cụ hỗ trợ quy đổi đơn vị và tính liều theo cân nặng, không thay thế phác đồ/y lệnh của
     bệnh viện hay nhận định lâm sàng của bác sĩ điều trị. Số liệu tham khảo dựa trên hướng dẫn của
